@@ -52,7 +52,7 @@ Per cambiare il nome con cui firma: Authentication > Users > clicca sull'utente 
 2. Carica `index.html` nel repository (Add file > Upload files).
 3. Vai in **Settings > Pages**, sotto "Build and deployment" scegli
    Source: **Deploy from a branch**, Branch: **main** / **/(root)**, poi Save.
-4. Dopo un minuto il sito è su `https://TUONOME.github.io/la-classe-del-sole/`
+4. Dopo un minuto il sito è su `https://x9kfyf2sg5-a11y.github.io/la-classe-del-sole/`
 
 Ogni volta che modifichi `index.html` e lo ricarichi su GitHub, il sito si aggiorna da solo.
 
