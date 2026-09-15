@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La classe del sole</title>
+<style>
+  :root {
+    --bianco: #FFFFFF;
+    --nero: #111111;
+    --giallo: #FFD400;
+    --bianco-sporco: #F6F6F4;
+    --grigio-linea: #E6E6E6;
+    --grigio-testo: #6E6E6E;
+    --testo: #333333;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    background: var(--bianco);
+    color: var(--testo);
+    line-height: 1.7;
+  }
+  header {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 48px 24px 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 1.9rem; font-weight: normal; letter-spacing: -0.01em; color: var(--nero); }
+  .filo { max-width: 680px; margin: 14px auto 0; padding: 0 24px; }
+  .filo::after { content: ""; display: block; width: 40px; height: 3px; background: var(--giallo); }
+  .utente { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: .85rem; color: var(--grigio-testo); display: flex; gap: 16px; align-items: baseline; }
+  main { max-width: 680px; margin: 0 auto; padding: 40px 24px 80px; }
+  label { display: block; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; color: var(--grigio-testo); margin-bottom: 6px; }
+  input, textarea {
+    width: 100%;
+    font: inherit;
+    line-height: 1.5;
+    padding: 12px;
+    border: 0;
+    border-bottom: 1px solid var(--grigio-linea);
+    border-radius: 0;
+    background: var(--bianco-sporco);
+    margin-bottom: 20px;
+    color: var(--nero);
+  }
+  input:focus, textarea:focus { outline: none; border-bottom-color: var(--giallo); }
+  textarea { min-height: 200px; resize: vertical; }
+  button {
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: .85rem;
+    padding: 4px 0;
+    border: 0;
+    border-bottom: 2px solid var(--giallo);
+    border-radius: 0;
+    background: transparent;
+    color: var(--nero);
+    cursor: pointer;
+  }
+  button:hover { border-bottom-color: var(--nero); }
+  button.secondario { border-bottom-color: transparent; color: var(--grigio-testo); }
+  button.secondario:hover { color: var(--nero); border-bottom-color: var(--grigio-linea); }
+  button:disabled { opacity: .4; cursor: default; }
+  .errore { color: var(--nero); font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: .85rem; margin: 10px 0 0; }
+  .errore:not(:empty)::before { content: ""; display: inline-block; width: 8px; height: 8px; background: var(--giallo); margin-right: 8px; }
+  #login, #firma { max-width: 360px; margin-bottom: 48px; }
+  #login h2, #firma h2 { margin: 0 0 20px; font-size: 1.2rem; font-weight: normal; color: var(--nero); }
+  #schedaScrivi { margin-bottom: 56px; padding-bottom: 40px; border-bottom: 1px solid var(--grigio-linea); }
+  .azioniForm { display: flex; gap: 24px; align-items: baseline; }
+  .voce { padding: 0 0 32px; margin-bottom: 32px; border-bottom: 1px solid var(--grigio-linea); }
+  .voce:last-child { border-bottom: 0; }
+  .voce .meta { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; color: var(--grigio-testo); }
+  .voce h2 { margin: 6px 0 10px; font-size: 1.45rem; font-weight: normal; color: var(--nero); letter-spacing: -0.01em; }
+  .voce .testo { white-space: pre-wrap; }
+  .voce .azioni { margin-top: 14px; display: flex; gap: 16px; }
+  .vuoto { color: var(--grigio-testo); padding: 20px 0; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>La classe del sole</h1>
+  <div class="utente hidden" id="barraUtente">
+    <span id="nomeUtente"></span>
+    <button class="secondario" id="btnLogout">Esci</button>
+  </div>
+  <button class="hidden" id="btnApriLogin">Entra per scrivere</button>
+</header>
+<div class="filo"></div>
+
+<main>
+
+  <!-- LOGIN (solo per chi vuole scrivere) -->
+  <section id="login" class="hidden">
+    <h2>Entra per scrivere</h2>
+    <form id="formLogin">
+      <label for="user">Email</label>
+      <input id="user" type="email" autocomplete="username" required>
+      <label for="pass">Password</label>
+      <input id="pass" type="password" autocomplete="current-password" required>
+      <button type="submit" id="btnLogin">Entra</button>
+      <p class="errore" id="erroreLogin"></p>
+    </form>
+  </section>
+
+  <!-- PRIMA VOLTA: scelta della firma -->
+  <section id="firma" class="hidden">
+    <h2>Come vuoi firmarti?</h2>
+    <form id="formFirma">
+      <label for="nomeFirma">Nome</label>
+      <input id="nomeFirma" required maxlength="40" autocomplete="nickname">
+      <button type="submit">Conferma</button>
+      <p class="errore" id="erroreFirma"></p>
+    </form>
+  </section>
+
+  <!-- DIARIO -->
+  <section id="diario">
+    <div class="hidden" id="schedaScrivi">
+      <form id="formVoce">
+        <input type="hidden" id="idVoce">
+        <label for="titolo">Titolo</label>
+        <input id="titolo" required maxlength="200">
+        <label for="testo">Testo</label>
+        <textarea id="testo" required></textarea>
+        <div class="azioniForm">
+          <button type="submit" id="btnSalva">Scrivi nel diario</button>
+          <button type="button" class="secondario hidden" id="btnAnnulla">Annulla modifica</button>
+        </div>
+        <p class="errore" id="erroreVoce"></p>
+      </form>
+    </div>
+    <div id="elenco"></div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+/* ============================================================
+   CONFIGURAZIONE: incolla qui i dati del progetto Supabase
+   (Impostazioni progetto > API > Project URL e anon public key)
+   ============================================================ */
+const SUPABASE_URL = "https://tobqlxrdihtmbfplsfkz.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvYnFseHJkaWh0bWJmcGxzZmt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0OTA5NTgsImV4cCI6MjEwNTA2Njk1OH0.wUjcA9m3QJjKUPlQQw_fFPL9InIh6DPQyDNplSEiC60";
+
+/* Ognuno entra con la propria email. Se qualcuno scrive solo un nome
+   senza @, viene completato con questo dominio (ripiego). */
+const DOMINIO_UTENTI = "classedelsole.it";
+
+const $ = (id) => document.getElementById(id);
+let db = null;
+let utente = null;
+let voci = [];
+
+function mostraErrore(id, msg) { $(id).textContent = msg || ""; }
+
+function nomeUtente() {
+  const nome = utente && utente.user_metadata && utente.user_metadata.nome;
+  return nome ? nome : "";
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function formattaData(iso) {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+}
+
+/* ---------- schermate ---------- */
+function mostraOspite() {
+  utente = null;
+  $("login").classList.add("hidden");
+  $("firma").classList.add("hidden");
+  $("btnApriLogin").classList.remove("hidden");
+  $("schedaScrivi").classList.add("hidden");
+  $("barraUtente").classList.add("hidden");
+  azzeraForm();
+  disegnaVoci();
+}
+
+function mostraAutore(sessione) {
+  utente = sessione.user;
+  $("login").classList.add("hidden");
+  $("btnApriLogin").classList.add("hidden");
+  $("barraUtente").classList.remove("hidden");
+  if (!nomeUtente()) {
+    $("nomeUtente").textContent = utente.email;
+    $("firma").classList.remove("hidden");
+    $("schedaScrivi").classList.add("hidden");
+    $("nomeFirma").focus();
+  } else {
+    $("nomeUtente").textContent = nomeUtente();
+    $("firma").classList.add("hidden");
+    $("schedaScrivi").classList.remove("hidden");
+  }
+  disegnaVoci();
+}
+
+$("formFirma").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  mostraErrore("erroreFirma", "");
+  const nome = $("nomeFirma").value.trim();
+  if (!nome) return;
+  const { data, error } = await db.auth.updateUser({ data: { nome } });
+  if (error) { mostraErrore("erroreFirma", "Non sono riuscito a salvare il nome: " + error.message); return; }
+  utente = data.user;
+  mostraAutore({ user: utente });
+});
+
+/* ---------- login / logout ---------- */
+$("formLogin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  mostraErrore("erroreLogin", "");
+  let email = $("user").value.trim().toLowerCase();
+  if (!email.includes("@")) email = email + "@" + DOMINIO_UTENTI;
+  $("btnLogin").disabled = true;
+  const { data, error } = await db.auth.signInWithPassword({ email, password: $("pass").value });
+  $("btnLogin").disabled = false;
+  if (error) { mostraErrore("erroreLogin", "Nome utente o password sbagliati."); return; }
+  $("formLogin").reset();
+  mostraAutore(data.session);
+});
+
+$("btnApriLogin").addEventListener("click", () => {
+  $("login").classList.toggle("hidden");
+  if (!$("login").classList.contains("hidden")) $("user").focus();
+});
+
+$("btnLogout").addEventListener("click", async () => {
+  await db.auth.signOut();
+  mostraOspite();
+});
+
+/* ---------- voci ---------- */
+async function caricaVoci() {
+  const { data, error } = await db.from("voci").select("*").order("created_at", { ascending: false });
+  if (error) { $("elenco").innerHTML = '<p class="errore">Non riesco a leggere il diario: ' + escapeHtml(error.message) + "</p>"; return; }
+  voci = data;
+  disegnaVoci();
+}
+
+function disegnaVoci() {
+  if (!voci.length) { $("elenco").innerHTML = '<p class="vuoto">Il diario è ancora vuoto. Scrivi tu la prima pagina!</p>'; return; }
+  $("elenco").innerHTML = voci.map((v) => {
+    const mia = utente && v.user_id === utente.id;
+    const modificata = v.updated_at ? " · modificata" : "";
+    return `
+      <article class="voce">
+        <div class="meta">${escapeHtml(v.autore)} · ${formattaData(v.created_at)}${modificata}</div>
+        <h2>${escapeHtml(v.titolo)}</h2>
+        <div class="testo">${escapeHtml(v.testo)}</div>
+        ${mia ? `<div class="azioni">
+          <button class="secondario" data-modifica="${v.id}">Modifica</button>
+          <button class="secondario" data-elimina="${v.id}">Elimina</button>
+        </div>` : ""}
+      </article>`;
+  }).join("");
+}
+
+$("elenco").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  if (btn.dataset.modifica) {
+    const v = voci.find((x) => x.id === btn.dataset.modifica);
+    if (!v) return;
+    $("idVoce").value = v.id;
+    $("titolo").value = v.titolo;
+    $("testo").value = v.testo;
+    $("btnSalva").textContent = "Salva modifica";
+    $("btnAnnulla").classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  if (btn.dataset.elimina) {
+    if (!confirm("Vuoi davvero eliminare questa pagina del diario?")) return;
+    const { error } = await db.from("voci").delete().eq("id", btn.dataset.elimina);
+    if (error) { alert("Non sono riuscito a eliminare: " + error.message); return; }
+    await caricaVoci();
+  }
+});
+
+function azzeraForm() {
+  $("formVoce").reset();
+  $("idVoce").value = "";
+  $("btnSalva").textContent = "Scrivi nel diario";
+  $("btnAnnulla").classList.add("hidden");
+  mostraErrore("erroreVoce", "");
+}
+
+$("btnAnnulla").addEventListener("click", azzeraForm);
+
+$("formVoce").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  mostraErrore("erroreVoce", "");
+  $("btnSalva").disabled = true;
+  const id = $("idVoce").value;
+  const titolo = $("titolo").value.trim();
+  const testo = $("testo").value.trim();
+  let error;
+  if (id) {
+    ({ error } = await db.from("voci").update({ titolo, testo, updated_at: new Date().toISOString() }).eq("id", id));
+  } else {
+    ({ error } = await db.from("voci").insert({ titolo, testo, autore: nomeUtente(), user_id: utente.id }));
+  }
+  $("btnSalva").disabled = false;
+  if (error) { mostraErrore("erroreVoce", "Non sono riuscito a salvare: " + error.message); return; }
+  azzeraForm();
+  await caricaVoci();
+});
+
+/* ---------- avvio ---------- */
+(async function avvio() {
+  if (SUPABASE_URL.startsWith("INCOLLA") || SUPABASE_ANON_KEY.startsWith("INCOLLA")) {
+    $("login").classList.remove("hidden");
+    mostraErrore("erroreLogin", "Il sito non è ancora configurato: mancano URL e chiave di Supabase in index.html.");
+    return;
+  }
+  db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  await caricaVoci();
+  const { data } = await db.auth.getSession();
+  if (data.session) mostraAutore(data.session); else mostraOspite();
+  db.auth.onAuthStateChange((evento) => {
+    if (evento === "SIGNED_OUT") mostraOspite();
+  });
+})();
+</script>
+</body>
+</html>
