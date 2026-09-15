@@ -52,6 +52,26 @@
   }
   input:focus, textarea:focus { outline: none; border-bottom-color: var(--giallo); }
   textarea { min-height: 200px; resize: vertical; }
+  .barra { display: flex; gap: 4px; margin-bottom: 6px; }
+  .barra button { font-size: .8rem; padding: 4px 8px; border-bottom-color: transparent; color: var(--grigio-testo); }
+  .barra button:hover { color: var(--nero); border-bottom-color: var(--giallo); }
+  .barra button.attivo { color: var(--nero); border-bottom-color: var(--nero); }
+  .editor {
+    min-height: 220px;
+    padding: 12px;
+    border-bottom: 1px solid var(--grigio-linea);
+    background: var(--bianco-sporco);
+    margin-bottom: 20px;
+    color: var(--nero);
+    outline: none;
+    line-height: 1.7;
+  }
+  .editor:focus { border-bottom-color: var(--giallo); }
+  .editor:empty::before { content: attr(data-vuoto); color: var(--grigio-testo); }
+  .editor p, .editor div, .testo.html p, .testo.html div { margin: 0 0 1em; }
+  .editor p:last-child, .testo.html p:last-child { margin-bottom: 0; }
+  .editor blockquote, .testo.html blockquote { margin: 1em 0; padding-left: 16px; border-left: 2px solid var(--giallo); }
+  .bozza { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: .75rem; color: var(--grigio-testo); margin-left: auto; }
   button {
     font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
     font-size: .85rem;
@@ -131,7 +151,13 @@
         <label for="titolo">Titolo</label>
         <input id="titolo" required maxlength="200">
         <label for="testo">Testo</label>
-        <textarea id="testo" required></textarea>
+        <div class="barra">
+          <button type="button" data-cmd="italic" title="Corsivo"><i>Corsivo</i></button>
+          <button type="button" data-cmd="bold" title="Grassetto"><b>Grassetto</b></button>
+          <button type="button" data-cmd="quote" title="Citazione">Citazione</button>
+          <span class="bozza" id="statoBozza"></span>
+        </div>
+        <div class="editor" id="testo" contenteditable="true" data-vuoto="Scrivi qui..."></div>
         <div class="azioniForm">
           <button type="submit" id="btnSalva">Scrivi nel diario</button>
           <button type="button" class="secondario hidden" id="btnAnnulla">Annulla modifica</button>
@@ -145,6 +171,7 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script>
 /* ============================================================
    CONFIGURAZIONE: incolla qui i dati del progetto Supabase
@@ -172,6 +199,42 @@ function nomeUtente() {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+
+/* ---------- testo formattato ---------- */
+const PULIZIA = { ALLOWED_TAGS: ["p", "div", "br", "b", "strong", "i", "em", "blockquote"], ALLOWED_ATTR: [] };
+function pulisci(html) { return DOMPurify.sanitize(html || "", PULIZIA); }
+function eHtml(testo) { return /<(p|div|br|b|strong|i|em|blockquote)[\s>\/]/i.test(testo || ""); }
+function testoInHtml(testo) {
+  return String(testo || "").split(/\n{2,}/).map((par) => "<p>" + escapeHtml(par).replace(/\n/g, "<br>") + "</p>").join("");
+}
+function soloTesto(html) { const d = document.createElement("div"); d.innerHTML = html || ""; return d.textContent.replace(/\s+/g, " ").trim(); }
+function leggiEditor() { return pulisci($("testo").innerHTML); }
+function scriviEditor(testo) { $("testo").innerHTML = eHtml(testo) ? pulisci(testo) : testoInHtml(testo); }
+
+/* ---------- bozza automatica ---------- */
+const CHIAVE_BOZZA = "classe-del-sole-bozza";
+let timerBozza = null;
+function salvaBozza() {
+  if ($("idVoce").value) return;
+  clearTimeout(timerBozza);
+  timerBozza = setTimeout(() => {
+    try {
+      const b = { titolo: $("titolo").value, testo: leggiEditor() };
+      if (b.titolo.trim() || soloTesto(b.testo)) { localStorage.setItem(CHIAVE_BOZZA, JSON.stringify(b)); $("statoBozza").textContent = "bozza salvata"; }
+      else { localStorage.removeItem(CHIAVE_BOZZA); $("statoBozza").textContent = ""; }
+    } catch (e) {}
+  }, 600);
+}
+function ripristinaBozza() {
+  try {
+    const b = JSON.parse(localStorage.getItem(CHIAVE_BOZZA) || "null");
+    if (!b) return;
+    $("titolo").value = b.titolo || "";
+    $("testo").innerHTML = pulisci(b.testo);
+    $("statoBozza").textContent = "bozza ripristinata";
+  } catch (e) {}
+}
+function cancellaBozza() { try { localStorage.removeItem(CHIAVE_BOZZA); } catch (e) {} $("statoBozza").textContent = ""; }
 
 function formattaData(iso) {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
@@ -203,6 +266,7 @@ function mostraAutore(sessione) {
     $("nomeUtente").textContent = nomeUtente();
     $("firma").classList.add("hidden");
     $("schedaScrivi").classList.remove("hidden");
+    if (!$("idVoce").value) ripristinaBozza();
   }
   disegnaVoci();
 }
@@ -259,7 +323,7 @@ function disegnaVoci() {
       <article class="voce">
         <div class="meta"><span class="autore">${escapeHtml(v.autore)}</span><span class="data">${formattaData(v.created_at)}${modificata}</span></div>
         <h2>${escapeHtml(v.titolo)}</h2>
-        <div class="testo">${escapeHtml(v.testo)}</div>
+        ${eHtml(v.testo) ? `<div class="testo html">${pulisci(v.testo)}</div>` : `<div class="testo">${escapeHtml(v.testo)}</div>`}
         ${mia ? `<div class="azioni">
           <button class="secondario" data-modifica="${v.id}">Modifica</button>
           <button class="secondario" data-elimina="${v.id}">Elimina</button>
@@ -276,7 +340,8 @@ $("elenco").addEventListener("click", async (e) => {
     if (!v) return;
     $("idVoce").value = v.id;
     $("titolo").value = v.titolo;
-    $("testo").value = v.testo;
+    scriviEditor(v.testo);
+    $("statoBozza").textContent = "";
     $("btnSalva").textContent = "Salva modifica";
     $("btnAnnulla").classList.remove("hidden");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -291,13 +356,47 @@ $("elenco").addEventListener("click", async (e) => {
 
 function azzeraForm() {
   $("formVoce").reset();
+  $("testo").innerHTML = "";
   $("idVoce").value = "";
   $("btnSalva").textContent = "Scrivi nel diario";
   $("btnAnnulla").classList.add("hidden");
   mostraErrore("erroreVoce", "");
 }
 
-$("btnAnnulla").addEventListener("click", azzeraForm);
+$("btnAnnulla").addEventListener("click", () => { azzeraForm(); ripristinaBozza(); });
+
+/* ---------- barra dell'editor ---------- */
+document.execCommand("defaultParagraphSeparator", false, "p");
+document.querySelectorAll(".barra button[data-cmd]").forEach((b) => {
+  b.addEventListener("mousedown", (e) => e.preventDefault());
+  b.addEventListener("click", () => {
+    $("testo").focus();
+    const cmd = b.dataset.cmd;
+    if (cmd === "quote") {
+      const dentro = document.queryCommandValue("formatBlock").toLowerCase() === "blockquote";
+      document.execCommand("formatBlock", false, dentro ? "p" : "blockquote");
+    } else {
+      document.execCommand(cmd, false, null);
+    }
+    aggiornaBarra(); salvaBozza();
+  });
+});
+function aggiornaBarra() {
+  document.querySelectorAll(".barra button[data-cmd]").forEach((b) => {
+    const cmd = b.dataset.cmd;
+    const on = cmd === "quote" ? document.queryCommandValue("formatBlock").toLowerCase() === "blockquote" : document.queryCommandState(cmd);
+    b.classList.toggle("attivo", !!on);
+  });
+}
+$("testo").addEventListener("keyup", aggiornaBarra);
+$("testo").addEventListener("mouseup", aggiornaBarra);
+$("testo").addEventListener("input", salvaBozza);
+$("titolo").addEventListener("input", salvaBozza);
+$("testo").addEventListener("paste", (e) => {
+  e.preventDefault();
+  const t = (e.clipboardData || window.clipboardData).getData("text/plain");
+  document.execCommand("insertText", false, t);
+});
 
 $("formVoce").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -305,7 +404,8 @@ $("formVoce").addEventListener("submit", async (e) => {
   $("btnSalva").disabled = true;
   const id = $("idVoce").value;
   const titolo = $("titolo").value.trim();
-  const testo = $("testo").value.trim();
+  const testo = leggiEditor();
+  if (!soloTesto(testo)) { mostraErrore("erroreVoce", "Il testo è vuoto."); $("btnSalva").disabled = false; return; }
   let error;
   if (id) {
     ({ error } = await db.from("voci").update({ titolo, testo, updated_at: new Date().toISOString() }).eq("id", id));
@@ -314,6 +414,7 @@ $("formVoce").addEventListener("submit", async (e) => {
   }
   $("btnSalva").disabled = false;
   if (error) { mostraErrore("erroreVoce", "Non sono riuscito a salvare: " + error.message); return; }
+  cancellaBozza();
   azzeraForm();
   await caricaVoci();
 });
